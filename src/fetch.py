@@ -8,14 +8,17 @@ from pymongo.server_api import ServerApi
 import boto3
 import time
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 
-# TEXT_MODEL = os.getenv("TEXT_MODEL")
+# Load environment variables from .env file
+load_dotenv()
+
 SERVICE_NAME = os.getenv("AWS_SERVICE_NAME")
 REGION_NAME = os.getenv("AWS_REGION_NAME")
 ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY")
 ACCESS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
 TEXT_MODEL = os.getenv("TEXT_MODE")
-MONGODB_KEY= os.getenv("MONGODB")
+MONGODB_KEY = os.getenv("MONGODB_KEY")
 
 # MongoDB Connection
 password = quote_plus(MONGODB_KEY)
@@ -201,29 +204,38 @@ def generate_content(content):
 articles = collection.find({"ai_summary": None})
 for article in articles:
     try:
-        # Generate summary and title
+        # Step 2.1: Generate summary and title
         summary, title = generate_ai_summary(article['full_content'], article['title'])
-        
-        # Generate questions and image prompt
+
+        # Update MongoDB with summary and title
+        collection.update_one(
+            {"_id": article["_id"]},
+            {"$set": {"ai_summary": summary, "title": title}}
+        )
+        print(f"Summary and title generated and saved for article '{article['title']}'")
+
+        # Step 2.2: Generate questions and image prompt after summary and title are updated
         question1, question2, image = generate_content(article['full_content'], title)
 
-        # Prepare the data to update MongoDB
+        # Prepare the data to update MongoDB with questions and image prompt
         update_data = {
-            "ai_summary": summary,
-            "title": title,
             "question1": question1,
             "question2": question2,
             "image_prompt": image
         }
 
-        # Update MongoDB with generated fields
-        collection.update_one({"_id": article["_id"]}, {"$set": update_data})
-        print(f"AI fields generated and saved for article '{article['title']}'")
+        # Update MongoDB with the questions and image prompt
+        collection.update_one(
+            {"_id": article["_id"]},
+            {"$set": update_data}
+        )
+        print(f"Questions and image prompt generated and saved for article '{article['title']}'")
 
     except Exception as e:
         print(f"Failed to generate AI fields for article '{article['title']}': {e}")
 
 print("AI generation and update completed for all articles.")
+
 
 
     
