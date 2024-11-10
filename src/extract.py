@@ -7,6 +7,11 @@ import boto3
 from datetime import datetime
 import random
 from urllib.parse import quote_plus
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 
 # TEXT_MODEL = os.getenv("TEXT_MODEL")
 SERVICE_NAME = os.getenv("AWS_SERVICE_NAME")
@@ -14,7 +19,7 @@ REGION_NAME = os.getenv("AWS_REGION_NAME")
 ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY")
 ACCESS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
 TEXT_MODEL = os.getenv("TEXT_MODE")
-MONGODB_KEY= os.getenv("MONGODB")
+MONGODB_KEY= os.getenv("MONGODB_KEY")
 
 
 # MongoDB Connection
@@ -30,7 +35,7 @@ client = boto3.client(service_name=SERVICE_NAME, region_name=REGION_NAME,
                       aws_secret_access_key=ACCESS_SECRET_KEY)
 
 # Prompt template for generating responses
-prompt_template = """[INST]Use the following pieces of context to answer the question at the end. Strictly follow the following rules:
+prompt_template = """[INST]Use the following pieces of content to answer the question at the end. Strictly follow the following rules:
 1. If the answer is not within the context knowledge, kindly state that you do not know, rather than attempting to fabricate a response.
 2. If you find the answer, please craft a detailed and concise response to the question at the end. Aim for a summary, ensuring that your explanation is thorough.[/INST]
 
