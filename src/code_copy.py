@@ -37,7 +37,7 @@ client = boto3.client(service_name=SERVICE_NAME, region_name=REGION_NAME,
 
 # List of RSS feed URLs and corresponding website names
 rss_feed_urls = {
-    "https://www.aluxurytravelblog.com/feed/":"aluxurytravelblog",
+    "https://www.gadventures.com/blog/feed/":"gadventures",
     "https://www.healthifyme.com/blog/feed/": "healthify"
 
 }
@@ -75,15 +75,10 @@ def fetch_rss_feed(rss_feed_url, headers, retries=3, delay=5):
             time.sleep(delay)
     return None
 
-
+# Function to generate an AI summary
 def generate_ai_summary(content, title):
     model_id = "mistral.mixtral-8x7b-instruct-v0:1"
-    system_prompt = f"""You are an intelligent content summarizer. Strictly provide response in JSON format. Your task is to analyze the content titled '{title}' and generate the following:
-
-    1. 'summary': A concise summary of the content without personal commentary or opinion in no more than 100 words.
-    2. 'title': A creative title for the content.
-
-    Generate a valid JSON with the keys 'summary' and 'title'."""
+    system_prompt = f"You are an intelligent summarizer. Your task is to write the content summary about '{title}'.\n #Instructions: \n In clear and concise language, summarize the key points and themes presented in the content without personal commentary or opinion in no more than 100 words."
     formatted_prompt = f"<s>[INST] {system_prompt}\n content : {content}[/INST]"
     
     native_request = {
@@ -99,20 +94,10 @@ def generate_ai_summary(content, title):
         response = client.invoke_model(modelId=model_id, body=request)
         model_response = json.loads(response["body"].read())
         response_text = model_response["outputs"][0]["text"]
-
-        # Parse the JSON response
-        response_data = json.loads(response_text)
-
-        # Extract summary and title, handling missing keys
-        summary = response_data.get("summary", "Summary not found.")
-        title = response_data.get("title", "Title not found.")
-        
-        return summary, title
-
-    except (ClientError, Exception, json.JSONDecodeError) as e:
-        print(f"ERROR: Can't invoke '{model_id}' or parse response. Reason: {e}")
-        return "Summary generation failed.", "Title generation failed."
-
+        return response_text
+    except (ClientError, Exception) as e:
+        print(f"ERROR: Can't invoke '{model_id}'. Reason: {e}")
+        return "Summary generation failed."
 
 # Step 1: Store Raw Article Data First
 for rss_feed_url, website_name in rss_feed_urls.items():
@@ -159,71 +144,14 @@ for rss_feed_url, website_name in rss_feed_urls.items():
 
 print("Raw article data saved. Starting summary generation...")
 
-def generate_content(content): 
-    model_id = "mistral.mixtral-8x7b-instruct-v0:1"
-    system_prompt = f"""You are an intelligent content assistant. Strictly provide the response in JSON format. Your task is to analyze the content and generate the following:
-    1. 'question1' and 'question2': Two engaging short questions about the content. The questions should be short and single sentence.
-    2. 'image': A descriptive prompt for an image that captures the general theme content, focusing strictly on location. Strictly avoid people.  
-
-    Generate a valid JSON with the keys 'question1', 'question2', and 'image'."""
-    formatted_prompt = f"<s>[INST] {system_prompt}\n content : {content}[/INST]"
-    
-    native_request = {
-        "prompt": formatted_prompt,
-        "max_tokens": 4096,
-        "temperature": 0.8,
-    }
-
-    request = json.dumps(native_request)
-
-    try:
-        # Invoke the model with the request.
-        response = client.invoke_model(modelId=model_id, body=request)
-        model_response = json.loads(response["body"].read())
-        response_text = model_response["outputs"][0]["text"]
-
-        # Parse the JSON response
-        response_data = json.loads(response_text)
-
-        # Extract question1, question2, and image, handling missing keys
-        question1 = response_data.get("question1", "question1 not found.")
-        question2 = response_data.get("question2", "question2 not found.")
-        image = response_data.get("image", "image prompt not found.")
-        
-        return question1, question2, image
-
-    except (ClientError, Exception, json.JSONDecodeError) as e:
-        print(f"ERROR: Can't invoke '{model_id}' or parse response. Reason: {e}")
-        return "question1 generation failed.", "question2 generation failed.", "image prompt generation failed."
-
-
-# Step 2: Generate AI Summaries, Titles, Questions, and Image Prompts, then Update MongoDB
+# Step 2: Generate AI Summaries and Update MongoDB
 articles = collection.find({"ai_summary": None})
 for article in articles:
     try:
-        # Generate summary and title
-        summary, title = generate_ai_summary(article['full_content'], article['title'])
-        
-        # Generate questions and image prompt
-        question1, question2, image = generate_content(article['full_content'], title)
-
-        # Prepare the data to update MongoDB
-        update_data = {
-            "ai_summary": summary,
-            "title": title,
-            "question1": question1,
-            "question2": question2,
-            "image_prompt": image
-        }
-
-        # Update MongoDB with generated fields
-        collection.update_one({"_id": article["_id"]}, {"$set": update_data})
-        print(f"AI fields generated and saved for article '{article['title']}'")
-
+        summary = generate_ai_summary(article['full_content'], article['title'])
+        collection.update_one({"_id": article["_id"]}, {"$set": {"ai_summary": summary}})
+        print(f"AI summary generated and saved for article '{article['title']}'")
     except Exception as e:
-        print(f"Failed to generate AI fields for article '{article['title']}': {e}")
+        print(f"Failed to generate summary for article '{article['title']}': {e}")
 
-print("AI generation and update completed for all articles.")
-
-
-    
+print("AI summary generation completed for all articles.")
