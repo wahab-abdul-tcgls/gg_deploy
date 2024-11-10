@@ -215,7 +215,7 @@ for article in articles:
         print(f"Summary and title generated and saved for article '{article['title']}'")
 
         # Step 2.2: Generate questions and image prompt after summary and title are updated
-        question1, question2, image = generate_content(article['full_content'], title)
+        question1, question2, image = generate_content(article['full_content'])
 
         # Prepare the data to update MongoDB with questions and image prompt
         update_data = {
