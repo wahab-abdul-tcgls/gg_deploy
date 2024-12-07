@@ -165,7 +165,7 @@ print("Raw article data saved. Starting summary generation...")
 def generate_content(content): 
     model_id = "mistral.mixtral-8x7b-instruct-v0:1"
     system_prompt = f"""You are an intelligent content assistant. Strictly provide the response in JSON format. Your task is to analyze the content and generate the following:
-    1. 'question1' and 'question2': Two engaging short questions about the content. The questions should be short and single sentence.
+    1. 'question1' and 'question2': Two engaging short questions about the content. The questions should be short and no more than 10 words.
     2. 'image': A descriptive prompt for an image that captures the general theme content, focusing strictly on location. Strictly avoid people.  
 
     Generate a valid JSON with the keys 'question1', 'question2', and 'image'."""
